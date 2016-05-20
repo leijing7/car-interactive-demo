@@ -9,3 +9,6 @@
 - OS X/Linux: 先执行npm-install.sh
 
 打开浏览器: http://(局域网地址):3001，然后随便找个扫码软件，扫一下就可以玩了。
+
+# MIT Licence
+The MIT License is a free software license originating at the Massachusetts Institute of Technology (MIT). It is a permissive free software license, meaning that it puts only very limited restriction on reuse and has therefore an excellent license compatibility.
