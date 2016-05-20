@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>其乐 - 随心</title>
+    <link href="/css/control.css" rel="stylesheet"/>
+</head>
+<body>
+<div id="connection-state"></div>
+<div id="touch-panel">
+</div>
+<div class="option" id="car-option">
+    <ul>
+        <li onclick="carChanged(0)">FERRARI CALIFORNIA</li>
+        <li onclick="carChanged(1)">MITSUBISHI LANCER</li>
+        <li onclick="carChanged(2)">AUDI S3</li>
+        <li onclick="carChanged(3)">MAZDA 3</li>
+        <li onclick="carChanged(4)">CHEVROLET CAMARO</li>
+        <li onclick="carChanged(5)">NISSAN 350Z</li>
+        <li onclick="carChanged(6)">MERCEDES SLR 500</li>
+        <li onclick="carChanged(7)">ASTON MARTIN V8</li>
+    </ul>
+</div>
+<div class="option" id="body-option">
+    <span>Body Red</span><input type="range" min="0" max="255" onchange="colorChanged('body');" id="body-red"></br>
+    <span>Body Green</span><input type="range" min="0" max="255" onchange="colorChanged('body');" id="body-green"></br>
+    <span>Body Blue</span><input type="range" min="0" max="255" onchange="colorChanged('body');" id="body-blue"></br>
+</div>
+<div class="option" id="rims-option">
+    <span>Rim Red</span><input type="range" min="0" max="255" onchange="colorChanged('rims');" id="rims-red"></br>
+    <span>Rim Green</span><input type="range" min="0" max="255" onchange="colorChanged('rims');" id="rims-green"></br>
+    <span>Rim Blue</span><input type="range" min="0" max="255" onchange="colorChanged('rims');" id="rims-blue"></br>
+</div>
+<div>
+    <button class="menu-car" onclick="toggleMenu('car');">车型</button>
+    <button class="menu-body" onclick="toggleMenu('body');">车身颜色</button>
+    <button class="menu-rims" onclick="toggleMenu('rims');">车轮颜色</button>
+</div>
+</body>
+
+<script src="/js/lib/socket.io.min.js"></script>
+<script src="/js/lib/pomeloclient.min.js"></script>
+<script src="http://hammerjs.github.io/dist/hammer.min.js"></script>
+<script type="text/javascript">
+
+    var pomelo = window.pomelo;
+    var host = window.location.hostname;
+    var pomeloConnected = false;
+    var port = "3010";
+
+    pomelo.init({
+        host: host,
+        port: port,
+        log: true
+    }, function () {
+        pomelo.request("connector.entryHandler.controlDevice", {visibleDevice: '<%= controlID %>'}, function (data) {
+            if (data.content === 'CHANNEL_NOT_FOUND') {
+                document.getElementById('connection-state').innerHTML = '<h1>二维码错误</h1>';
+                document.getElementById('touch-panel').style.display = 'none';
+                document.getElementById('connection-state').style.display = 'block';
+                pomelo.disconnect();
+                pomeloConnected = false;
+                return;
+            } else {
+                document.getElementById('connection-state').innerHTML = '<h1>载入中...请等待</h1><span>' +
+                '加载完成后可通过触摸区域控制3D模型' + '</span>';
+                document.getElementById('touch-panel').style.display = 'none';
+                document.getElementById('connection-state').style.display = 'block';
+                pomeloConnected = true;
+            }
+
+        });
+
+        pomelo.on('close', function (data) {
+            document.getElementById('connection-state').innerHTML = '<h1>可视设备已断开链接</h1>';
+            document.getElementById('touch-panel').style.display = 'none';
+            document.getElementById('connection-state').style.display = 'block';
+            pomelo.disconnect();
+            pomeloConnected = false;
+            console.log(data);
+        });
+
+        pomelo.on('loaded', function(data) {
+            document.getElementById('touch-panel').style.display = 'block';
+            document.getElementById('connection-state').style.display = 'none';
+            pomeloConnected = true;
+        })
+    });
+
+    var touchPanel = document.getElementById('touch-panel');
+    var hammer = new Hammer(touchPanel);
+    hammer.get('pan').set({direction: Hammer.DIRECTION_ALL});
+    hammer.get('swipe').set({direction: Hammer.DIRECTION_ALL});
+    hammer.get('pinch').set({enable: true});
+    var commonEvents = 'pan pinch pinchend';
+    hammer.on(commonEvents, function (event) {
+        //console.log(event);
+        if (pomeloConnected) {
+            var eventInfo = {};
+            if ('pinch' === event.type) {
+                eventInfo = {
+                    type: event.type,
+                    scale: event.scale
+                }
+            } else {
+                eventInfo = {
+                    type: event.type,
+                    deltaX: event.deltaX / event.target.clientWidth,
+                    deltaY: event.deltaY / event.target.clientHeight,
+                    deltaTime: event.deltaTime,
+                    angle: event.angle,
+                    scale: event.scale,
+                    rotation: event.rotation,
+                    isFirst: event.isFirst,
+                    isFinal: event.isFinal
+                };
+            }
+
+            pomelo.notify('connector.controlHandler.control', {
+                type: event.type,
+                data: eventInfo
+            });
+        }
+        //console.log(event);
+    });
+
+    function colorChanged(type) {
+        var red = document.getElementById(type + '-red').value / 255;
+        var green = document.getElementById(type + '-green').value / 255;
+        var blue = document.getElementById(type + '-blue').value / 255;
+
+        pomelo.notify('connector.controlHandler.control', {
+            type: 'colorChanged',
+            data: {
+                comp: type,
+                red: red,
+                green: green,
+                blue: blue
+            }
+        });
+    }
+
+    function carChanged(carIndex) {
+        pomelo.notify('connector.controlHandler.control', {
+            type: 'carChanged',
+            data: {
+                car: carIndex
+            }
+        });
+    }
+
+    function toggleMenu(type) {
+
+        //all hidden
+        var menus = ['car', 'body', 'rims'];
+        for(i = 0; i < menus.length; ++i) {
+            if (menus[i] !== type)
+                document.getElementById(menus[i] + '-option').style.display = 'none';
+        }
+        var optPanel = document.getElementById(type + '-option');
+        if(optPanel.style.display !== 'block'){
+            optPanel.style.display = 'block';
+        }else {
+            optPanel.style.display = 'none';
+        }
+    }
+
+</script>
+</html>
