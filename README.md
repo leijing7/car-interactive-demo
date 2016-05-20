@@ -12,5 +12,9 @@
 
 菜单部分调节模型参数，黑色区域相当于触摸板，用来放大缩小模型，以及旋转模型，单指旋转，双指放大缩小。
 
+# 如果运行失败
+- interactive-server下面需要新建一个logs目录
+- interactive-server/configs/servers.json里面的IP需要改成本机的局域网IP
+
 # MIT Licence
 The MIT License is a free software license originating at the Massachusetts Institute of Technology (MIT). It is a permissive free software license, meaning that it puts only very limited restriction on reuse and has therefore an excellent license compatibility.
